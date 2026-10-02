@@ -1,0 +1,23 @@
+{
+  "name": "classroom-domain-handoff",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/educator_portal.ts",
+    "start": "tsx src/educator_portal.ts",
+    "demo": "tsx scripts/onboard_school.ts",
+    "test": "tsx --test test/course_deadlines.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.15.30",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}
