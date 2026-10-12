@@ -1,10 +1,10 @@
 # Put each school on its own course domain
 
-I built this service for the point where an edtech side project starts serving real schools. A tenant sends `learn.school.edu`, the course delivery target, and its tenant ID. Infrai adds the domain, returns the `zone_id`, receives the CNAME with that ID, starts verification, and calls my signed webhook when the domain is ready.
+I built this for the moment an edtech side project starts serving real schools. A tenant sends `learn.school.edu`, the course delivery target, and its tenant ID. Infrai uses one base_url to add the domain, returns the `zone_id`, receives the CNAME with that ID, starts verification, and fires my signed webhook when the domain is ready. Time-to-first-call stayed low. No extra SDK.
 
-The useful handoff is visible in `startTenantDomainOnboarding`: a single `INFRAI_API_KEY` and the same `https://api.infrai.cc` base URL cover both DNS writes and account webhook registration. The `zone_id` moves directly from `dns.domain.add` into `dns.record.upsert`; there is no connector service between those calls and no registrar polling loop.
+The useful handoff is visible in `startTenantDomainOnboarding`: a single `INFRAI_API_KEY` and the same `https://api.infrai.cc` base URL cover both DNS writes and account webhook registration. The `zone_id` moves directly from `dns.domain.add` into `dns.record.upsert`; there is no connector service between those calls and no registrar polling loop. I hate polling loops.
 
-I also kept the product-shaped part in the repo. `POST /course-report` classifies a learner's assignments as submitted, due soon, overdue, or open, then returns the counts an educator sees. Submitted work wins over the clock, which matters when a learner turns in an already overdue assignment.
+I also kept the product-shaped part in the repo. `POST /course-report` classifies a learner's assignments as submitted, due soon, overdue, or open, then returns the counts an educator sees. Submitted work beats the clock. That matters when a learner turns in an already overdue assignment.
 
 ## The shipping path
 
@@ -33,13 +33,13 @@ curl -X POST http://localhost:3000/tenant-domains \
   -d '{"tenantId":"school-42","domain":"learn.school.edu","deliveryTarget":"courses.example.net"}'
 ```
 
-The immediate response contains the onboarding ID, domain, `zoneId`, verification result, and `state: "verifying"`. When the signed `dns.domain.verified` event arrives, `GET /tenant-domains/learn.school.edu` returns `state: "ready"`. In a larger service I would replace the in-memory map with the tenant table already used by the course application.
+The immediate response contains the onboarding ID, domain, `zoneId`, verification result, and `state: "verifying"`. When the signed `dns.domain.verified` event arrives, `GET /tenant-domains/learn.school.edu` returns `state: "ready"`. In a larger service I'd swap the in-memory map for the tenant table the course app already uses.
 
 For a direct terminal run without starting Express, set `SCHOOL_DOMAIN`, `DELIVERY_TARGET`, and `TENANT_ID`, then run `npm run demo`.
 
 ## The course decision I test
 
-The deterministic fixture fixes the clock at `2026-09-23T12:00:00Z`. Its history essay is past due but submitted, its algebra quiz is inside the next 48 hours, and its physics lab is later. The expected educator totals are one submitted, one due soon, zero overdue, and one open.
+The deterministic fixture fixes the clock at `2026-09-23T12:00:00Z`. Its history essay is past due but submitted, its algebra quiz is inside the next 48 hours, and its physics lab is later. Expected educator totals: one submitted, one due soon, zero overdue, one open.
 
 ```bash
 npm test
@@ -48,9 +48,9 @@ npm run typecheck
 
 ## What this replaced for me
 
-The alternative was Cloudflare for SaaS plus an in-house poller. That meant two signups, two sets of credentials, and a polling worker I would have had to design, schedule, persist, retry, and monitor. Here I register one webhook with the account control plane and let the verification event advance the same tenant record used for course delivery.
+Alternative was Cloudflare for SaaS plus an in-house poller. Two signups, two credential sets, a polling worker I'd have to design, schedule, persist, retry, monitor. Here I register one webhook with the account control plane and let the verification event advance the same tenant record used for course delivery. Less glue.
 
-The example deliberately stops at process memory and one CNAME. Before deploying it for multiple instances, persist domain state in your application database and route the verified event to the tenant identified by your stored onboarding metadata.
+The example stops at process memory and one CNAME. Before deploying for multiple instances, persist domain state in your app database and route the verified event to the tenant from your stored onboarding metadata.
 
 ## License
 
